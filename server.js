@@ -6,8 +6,8 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const client = Simplify.getClient({
-    publicKey: 'sbpb_NDg3NmUzYmUtNWY5Mi00OWNkLWFkYjgtNTY3M2UyNjljNzJi',  // 使用你提供的公钥
-    privateKey: 'DPGPKhHRjSi4huMU8i3OWR2rbCWFIuVbNstMaVB4Gsx5YFFQL0ODSXAOkNtXTToq'  // 使用你提供的私钥
+    publicKey: 'lvpb_Mjg2NjM5ZWQtNTY1OC00ZTM4LTllZDMtMjhkMjEzNDUxMGJl',  // 使用你提供的公钥
+    privateKey: 'PLxpUtfOvsUvUEKZGlgOKHhopPfcPzpjYYC7+ZrTFdV5YFFQL0ODSXAOkNtXTToq'  // 使用你提供的私钥
 });
 
 // Serve the front-end HTML file
@@ -20,7 +20,7 @@ app.post('/process-payment', (req, res) => {
         amount: "1000", // Amount in cents ($10.00)
         token: simplifyToken,
         description: "Payment Description",
-        currency: "USD",
+        currency: "AUD",
         reference: "7a6ef6be31"
     }, (errData, data) => {
         if (errData) {
