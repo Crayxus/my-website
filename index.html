@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game with Recharge</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background-color: #000;
+            display: block;
+            margin: 20px auto;
+        }
+        button, input {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .price {
+            font-size: 14px;
+            color: gray;
+        }
+        #lives {
+            font-size: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.18.0/js/md5.min.js"></script>
+</head>
+<body>
+    <h1>Snake Game with Recharge</h1>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <p id="lives">Lives: 1</p>
+    <button onclick="startGame()">开始游戏</button><br>
+
+    <label for="lifeInput">输入要购买的生命数量:</label>
+    <input type="number" id="lifeInput" value="1" min="1">
+    <button onclick="recharge()">购买生命</button>
+    <p class="price">每条命5澳元</p>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let snake = [{x: 200, y: 200}];
+        let direction = {x: 0, y: 0};
+        let food = {x: 100, y: 100};
+        let gridSize = 20;
+        let gameInterval;
+        let lives = 1; // 初始生命值为1
+        let gameOver = false;
+
+        function drawRect(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, gridSize, gridSize);
+        }
+
+        function drawSnake() {
+            snake.forEach(segment => drawRect(segment.x, segment.y, "green"));
+        }
+
+        function drawFood() {
+            drawRect(food.x, food.y, "red");
+        }
+
+        function moveSnake() {
+            const newHead = {x: snake[0].x + direction.x * gridSize, y: snake[0].y + direction.y * gridSize};
+            snake.unshift(newHead);
+
+            if (newHead.x === food.x && newHead.y === food.y) {
+                placeFood();
+            } else {
+                snake.pop();
+            }
+
+            if (newHead.x < 0 || newHead.x >= canvas.width || newHead.y < 0 || newHead.y >= canvas.height || checkCollision(newHead)) {
+                lives--;
+                updateLives();
+                if (lives > 0) {
+                    resetSnake();
+                } else {
+                    clearInterval(gameInterval);
+                    gameOver = true;
+                    alert("Game Over! 充值后可以继续玩。");
+                }
+            }
+        }
+
+        function placeFood() {
+            food = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
+                y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize
+            };
+        }
+
+        function checkCollision(head) {
+            return snake.some((segment, index) => index !== 0 && head.x === segment.x && head.y === segment.y);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSnake();
+            drawFood();
+            moveSnake();
+        }
+
+        function startGame() {
+            if (lives === 0) {
+                alert("你需要购买生命才能玩！");
+                return;
+            }
+            snake = [{x: 200, y: 200}];
+            direction = {x: 0, y: 0};
+            placeFood();
+            gameOver = false;
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100);
+        }
+
+        function resetSnake() {
+            snake = [{x: 200, y: 200}];
+            direction = {x: 0, y: 0};
+        }
+
+        async function recharge() {
+            const lifeInput = document.getElementById("lifeInput").value;
+            const additionalLives = parseInt(lifeInput);
+            const totalCost = additionalLives * 5; // 每条命5澳元
+
+            try {
+                console.log('进来了....');
+                // 获取当前时间戳
+                const timestamp = Date.now();
+                console.log(timestamp);
+                // 生成随机 nonce_str
+                const nonce_str = uuid.v4().replace(/-/g, '');
+                console.log("nonce_str", nonce_str);
+                // 生成签名字符串
+                // const secretKey = "YOUR_SECRET_KEY_HERE";
+                const signString = `30042195744&${timestamp}&${nonce_str}&8766f0efe85446dab1f8cf9c3c51a4c1`;
+                const sign = md5(signString).toUpperCase();
+
+                const amount = totalCost;
+                const url = `https://www.omipay.com.au/omipay/api/v2/MakeJSAPIOrder?m_number=30042195744&timestamp=${timestamp}&nonce_str=${nonce_str}&sign=${sign}&order_name=会员充值&currency=AUD&redirect_url=https://www.omipay.net&amount=${amount}&notify_url=https://www.omipay.net&out_order_no=ZFDD${timestamp}`;
+
+                // 发起 HTTP 请求
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('支付请求失败');
+                }
+
+                const data = await response.json();
+                console.log('支付请求成功', data);
+
+                // 获取 pay_url 并自动打开
+                if (data.success && data.pay_url) {
+                    window.location.href = data.pay_url;
+                }
+            } catch (error) {
+                console.error('Payment request failed', error);
+            }
+
+            lives += additionalLives; // 不论是否游戏结束都可以购买生命
+            updateLives();
+            alert(`充值成功！你购买了 ${additionalLives} 条命，花费了 ${totalCost} 澳元。`);
+        }
+
+        function updateLives() {
+            document.getElementById("lives").textContent = `Lives: ${lives}`;
+        }
+
+        window.addEventListener("keydown", (e) => {
+            switch(e.key) {
+                case "ArrowUp":
+                    if (direction.y === 0) direction = {x: 0, y: -1};
+                    break;
+                case "ArrowDown":
+                    if (direction.y === 0) direction = {x: 0, y: 1};
+                    break;
+                case "ArrowLeft":
+                    if (direction.x === 0) direction = {x: -1, y: 0};
+                    break;
+                case "ArrowRight":
+                    if (direction.x === 0) direction = {x: 1, y: 0};
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
